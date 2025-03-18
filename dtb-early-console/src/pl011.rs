@@ -5,7 +5,7 @@ use crate::Console;
 pub struct Pl011 {}
 
 impl Console for Pl011 {
-    fn put(&self, base: usize, byte: u8) {
+    fn put(base: usize, byte: u8) {
         const TXFF: u8 = 1 << 5;
 
         unsafe {
@@ -15,5 +15,9 @@ impl Console for Pl011 {
             fence(Ordering::SeqCst);
             put.write_volatile(byte);
         }
+    }
+    
+    fn get(mmio: usize) -> u8 {
+        todo!()
     }
 }

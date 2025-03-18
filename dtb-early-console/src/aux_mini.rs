@@ -5,7 +5,7 @@ use crate::Console;
 pub struct AuxMini {}
 
 impl Console for AuxMini {
-    fn put(&self, base: usize, byte: u8) {
+    fn put(base: usize, byte: u8) {
         const TXFF: u32 = 1 << 5;
 
         unsafe {
@@ -21,5 +21,9 @@ impl Console for AuxMini {
             let data = base as *mut u32;
             data.write_volatile(byte as _);
         }
+    }
+    
+    fn get(mmio: usize) -> u8 {
+        todo!()
     }
 }

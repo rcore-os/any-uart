@@ -9,6 +9,8 @@ use core::{
 };
 
 use aarch64_cpu::{asm::barrier, registers::*};
+use fdt_parser::Fdt;
+use smccc::{Hvc, Smc, psci};
 
 const FLAG_LE: usize = 0b0;
 const FLAG_PAGE_SIZE_4K: usize = 0b10;
@@ -74,11 +76,33 @@ fn rust_entry(_text_va: usize, fdt: *mut u8) -> ! {
     clean_bss();
     enable_fp();
 
-    if let Some(mut uart) = dtb_early_console::init(NonNull::new(fdt).unwrap()) {
-        let _ = uart.write_str("Hello, world!\n");
+    if let Some((mut tx, _rx)) = dtb_early_console::init(NonNull::new(fdt).unwrap()) {
+        let _ = tx.write_str("Hello, world!\n");
+
+        let _ = tx.write_str("All tests passed!\n");
     }
 
+    shutdown(fdt);
+
     unreachable!()
+}
+
+fn shutdown(fdt: *mut u8) -> Option<()> {
+    let fdt = Fdt::from_ptr(NonNull::new(fdt).unwrap()).ok()?;
+
+    let node = fdt
+        .find_compatible(&["arm,psci-1.0", "arm,psci-0.2", "arm,psci"])
+        .next()?;
+
+    let method = node.find_property("method")?.str();
+
+    if method == "smc" {
+        let _ = psci::system_off::<Smc>();
+    } else if method == "hvc" {
+        let _ = psci::system_off::<Hvc>();
+    }
+
+    Some(())
 }
 
 #[panic_handler]

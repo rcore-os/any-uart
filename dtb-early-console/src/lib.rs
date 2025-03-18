@@ -5,7 +5,6 @@ use core::ptr::NonNull;
 
 use aux_mini::AuxMini;
 use fdt_parser::Fdt;
-pub use fdt_parser::FdtError;
 use pl011::Pl011;
 
 mod aux_mini;
@@ -13,17 +12,17 @@ mod pl011;
 
 pub struct Sender {
     mmio: usize,
-    d: &'static dyn Console,
+    f: fn(usize, u8),
 }
 
 pub struct Receiver {
     mmio: usize,
-    d: &'static dyn Console,
+    f: fn(usize) -> u8,
 }
 
 impl Sender {
     pub fn put(&mut self, c: u8) {
-        self.d.put(self.mmio, c);
+        (self.f)(self.mmio, c);
     }
 }
 
@@ -37,11 +36,18 @@ impl Write for Sender {
 }
 
 pub trait Console {
-    fn put(&self, mmio: usize, c: u8);
-    // fn get(&self, mmio: usize) -> u8;
+    fn put(mmio: usize, c: u8);
+    fn get(mmio: usize) -> u8;
+
+    fn to_uart(mmio: usize) -> (Sender, Receiver) {
+        (
+            Sender { mmio, f: Self::put },
+            Receiver { mmio, f: Self::get },
+        )
+    }
 }
 
-pub fn init(fdt_addr: NonNull<u8>) -> Option<Sender> {
+pub fn init(fdt_addr: NonNull<u8>) -> Option<(Sender, Receiver)> {
     let fdt = Fdt::from_ptr(fdt_addr).ok()?;
 
     if let Some(u) = fdt_stdout(&fdt) {
@@ -51,21 +57,18 @@ pub fn init(fdt_addr: NonNull<u8>) -> Option<Sender> {
     None
 }
 
-fn fdt_stdout(fdt: &Fdt<'_>) -> Option<Sender> {
+fn fdt_stdout(fdt: &Fdt<'_>) -> Option<(Sender, Receiver)> {
     let stdout = fdt.chosen()?.stdout()?;
     let reg = stdout.node.reg()?.next()?;
 
     let mmio = reg.address as usize;
     for c in stdout.node.compatibles() {
         if c.contains("brcm,bcm2835-aux-uart") {
-            return Some(Sender {
-                mmio,
-                d: &AuxMini {},
-            });
+            return Some(AuxMini::to_uart(mmio));
         }
 
         if c.contains("arm,pl011") || c.contains("arm,primecell") {
-            return Some(Sender { mmio, d: &Pl011 {} });
+            return Some(Pl011::to_uart(mmio));
         }
     }
 
