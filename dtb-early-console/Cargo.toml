@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 fdt-parser = "0.4"
+embedded-hal-nb = "1.0"

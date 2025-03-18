@@ -1,7 +1,10 @@
 #![no_std]
 
-pub use core::fmt::Write;
 use core::ptr::NonNull;
+
+pub use core::fmt::Write;
+pub use embedded_hal_nb::nb::block;
+pub use embedded_hal_nb::serial::ErrorKind;
 
 use aux_mini::AuxMini;
 use fdt_parser::Fdt;
@@ -10,34 +13,40 @@ use pl011::Pl011;
 mod aux_mini;
 mod pl011;
 
+pub type Error = embedded_hal_nb::nb::Error<ErrorKind>;
+
 pub struct Sender {
     mmio: usize,
-    f: fn(usize, u8),
-}
-
-pub struct Receiver {
-    mmio: usize,
-    f: fn(usize) -> u8,
+    f: fn(usize, u8) -> Result<(), Error>,
 }
 
 impl Sender {
-    pub fn put(&mut self, c: u8) {
-        (self.f)(self.mmio, c);
+    pub fn write(&mut self, word: u8) -> Result<(), Error> {
+        (self.f)(self.mmio, word)
     }
-}
 
-impl Write for Sender {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+    pub fn write_str_blocking(&mut self, s: &str) -> core::fmt::Result {
         for c in s.bytes() {
-            self.put(c);
+            let _ = block!(self.write(c));
         }
         Ok(())
     }
 }
 
+pub struct Receiver {
+    mmio: usize,
+    f: fn(usize) -> Result<u8, Error>,
+}
+
+impl Receiver {
+    pub fn read(&mut self) -> Result<u8, Error> {
+        (self.f)(self.mmio)
+    }
+}
+
 pub trait Console {
-    fn put(mmio: usize, c: u8);
-    fn get(mmio: usize) -> u8;
+    fn put(mmio: usize, c: u8) -> Result<(), Error>;
+    fn get(mmio: usize) -> Result<u8, Error>;
 
     fn to_uart(mmio: usize) -> (Sender, Receiver) {
         (

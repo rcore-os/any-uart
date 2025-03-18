@@ -4,11 +4,11 @@
 
 use core::{
     arch::naked_asm,
-    fmt::Write,
     ptr::{NonNull, slice_from_raw_parts_mut},
 };
 
 use aarch64_cpu::{asm::barrier, registers::*};
+use dtb_early_console::*;
 use fdt_parser::Fdt;
 use smccc::{Hvc, Smc, psci};
 
@@ -77,9 +77,9 @@ fn rust_entry(_text_va: usize, fdt: *mut u8) -> ! {
     enable_fp();
 
     if let Some((mut tx, _rx)) = dtb_early_console::init(NonNull::new(fdt).unwrap()) {
-        let _ = tx.write_str("Hello, world!\n");
+        let _ = tx.write_str_blocking("Hello, world!\n");
 
-        let _ = tx.write_str("All tests passed!\n");
+        let _ = tx.write_str_blocking("All tests passed!\n");
     }
 
     shutdown(fdt);
