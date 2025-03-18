@@ -1,0 +1,3 @@
+[workspace]
+members = ["dtb-early-console", "hello"]
+resolver = "3"
