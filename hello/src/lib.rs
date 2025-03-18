@@ -2,7 +2,13 @@
 #![no_main]
 #![feature(naked_functions)]
 
-use core::arch::naked_asm;
+use core::{
+    arch::naked_asm,
+    fmt::Write,
+    ptr::{NonNull, slice_from_raw_parts_mut},
+};
+
+use aarch64_cpu::{asm::barrier, registers::*};
 
 const FLAG_LE: usize = 0b0;
 const FLAG_PAGE_SIZE_4K: usize = 0b10;
@@ -12,7 +18,7 @@ const FLAG_ANY_MEM: usize = 0b1000;
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".text.head")]
 /// The entry point of the kernel.
-pub unsafe extern "C" fn _start() -> ! {
+unsafe extern "C" fn _start() -> ! {
     unsafe {
         naked_asm!(
             // code0/code1
@@ -64,15 +70,35 @@ unsafe extern "C" fn primary_entry() -> ! {
     }
 }
 
-fn rust_entry(text_va: usize, fdt: *mut u8) -> ! {
-    
+fn rust_entry(_text_va: usize, fdt: *mut u8) -> ! {
+    clean_bss();
+    enable_fp();
 
+    if let Some(mut uart) = dtb_early_console::init(NonNull::new(fdt).unwrap()) {
+        let _ = uart.write_str("Hello, world!\n");
+    }
 
-
-    loop {}
+    unreachable!()
 }
 
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
+}
+
+fn clean_bss() {
+    unsafe extern "C" {
+        fn _sbss();
+        fn _ebss();
+    }
+
+    let start = _sbss as *const u8 as usize;
+    let end = _ebss as *const u8 as usize;
+    let bss = unsafe { &mut *slice_from_raw_parts_mut(start as *mut u8, end - start) };
+    bss.fill(0);
+}
+
+fn enable_fp() {
+    CPACR_EL1.write(CPACR_EL1::FPEN::TrapNothing);
+    barrier::isb(barrier::SY);
 }
