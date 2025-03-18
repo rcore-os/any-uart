@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 fdt-parser = "0.4"
 embedded-hal-nb = "1.0"
+uart_16550 = "0.3"

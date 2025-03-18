@@ -7,22 +7,24 @@ pub use embedded_hal_nb::nb::block;
 pub use embedded_hal_nb::serial::ErrorKind;
 
 use aux_mini::AuxMini;
-use fdt_parser::Fdt;
+use fdt_parser::{Chosen, Fdt};
+use ns16550::Ns16550;
 use pl011::Pl011;
 
 mod aux_mini;
+mod ns16550;
 mod pl011;
 
 pub type Error = embedded_hal_nb::nb::Error<ErrorKind>;
 
 pub struct Sender {
-    mmio: usize,
-    f: fn(usize, u8) -> Result<(), Error>,
+    uart: UartData,
+    f: fn(UartData, u8) -> Result<(), Error>,
 }
 
 impl Sender {
     pub fn write(&mut self, word: u8) -> Result<(), Error> {
-        (self.f)(self.mmio, word)
+        (self.f)(self.uart, word)
     }
 
     pub fn write_str_blocking(&mut self, s: &str) -> core::fmt::Result {
@@ -34,24 +36,24 @@ impl Sender {
 }
 
 pub struct Receiver {
-    mmio: usize,
-    f: fn(usize) -> Result<u8, Error>,
+    uart: UartData,
+    f: fn(UartData) -> Result<u8, Error>,
 }
 
 impl Receiver {
     pub fn read(&mut self) -> Result<u8, Error> {
-        (self.f)(self.mmio)
+        (self.f)(self.uart)
     }
 }
 
 pub trait Console {
-    fn put(mmio: usize, c: u8) -> Result<(), Error>;
-    fn get(mmio: usize) -> Result<u8, Error>;
+    fn put(uart: UartData, c: u8) -> Result<(), Error>;
+    fn get(uart: UartData) -> Result<u8, Error>;
 
-    fn to_uart(mmio: usize) -> (Sender, Receiver) {
+    fn to_uart(uart: UartData) -> (Sender, Receiver) {
         (
-            Sender { mmio, f: Self::put },
-            Receiver { mmio, f: Self::get },
+            Sender { uart, f: Self::put },
+            Receiver { uart, f: Self::get },
         )
     }
 }
@@ -59,26 +61,114 @@ pub trait Console {
 pub fn init(fdt_addr: NonNull<u8>) -> Option<(Sender, Receiver)> {
     let fdt = Fdt::from_ptr(fdt_addr).ok()?;
 
-    if let Some(u) = fdt_stdout(&fdt) {
+    let chosen = fdt.chosen()?;
+
+    if let Some(u) = fdt_stdout(&chosen) {
         return Some(u);
+    }
+
+    fdt_bootargs(&chosen)
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct UartData {
+    pub mmio: usize,
+    pub io_kind: IoKind,
+}
+
+fn fdt_stdout(chosen: &Chosen<'_>) -> Option<(Sender, Receiver)> {
+    let stdout = chosen.stdout()?;
+    let reg = stdout.node.reg()?.next()?;
+    let io_kind = IoKind::Mmio32;
+    let mmio = reg.address as usize;
+    let uart = UartData { mmio, io_kind };
+
+    for c in stdout.node.compatibles() {
+        macro_rules! of_uart {
+            ($name:ty, $compatible:expr) => {
+                for want in $compatible {
+                    if c.contains(want) {
+                        return Some(<$name>::to_uart(uart));
+                    }
+                }
+            };
+        }
+
+        of_uart!(AuxMini, &["brcm,bcm2835-aux-uart"]);
+        of_uart!(Pl011, &["arm,pl011", "arm,primecell"]);
     }
 
     None
 }
 
-fn fdt_stdout(fdt: &Fdt<'_>) -> Option<(Sender, Receiver)> {
-    let stdout = fdt.chosen()?.stdout()?;
-    let reg = stdout.node.reg()?.next()?;
+#[derive(Clone, Copy)]
+pub enum IoKind {
+    Port,
+    Mmio,
+    Mmio16,
+    Mmio32,
+    Mmio32be,
+}
 
-    let mmio = reg.address as usize;
-    for c in stdout.node.compatibles() {
-        if c.contains("brcm,bcm2835-aux-uart") {
-            return Some(AuxMini::to_uart(mmio));
-        }
+impl IoKind {
+    // pub fn stride(&self)->usize{
 
-        if c.contains("arm,pl011") || c.contains("arm,primecell") {
-            return Some(Pl011::to_uart(mmio));
+    // }
+}
+
+impl From<&str> for IoKind {
+    fn from(value: &str) -> Self {
+        match value {
+            "mmio" => IoKind::Mmio,
+            "mmio16" => IoKind::Mmio16,
+            "mmio32" => IoKind::Mmio32,
+            "mmio32be" => IoKind::Mmio32be,
+            "mmio32native" => {
+                if cfg!(target_endian = "little") {
+                    IoKind::Mmio32
+                } else {
+                    IoKind::Mmio32be
+                }
+            }
+            _ => IoKind::Port,
         }
+    }
+}
+
+fn fdt_bootargs(chosen: &Chosen<'_>) -> Option<(Sender, Receiver)> {
+    let bootargs = chosen.bootargs()?;
+
+    let earlycon = bootargs
+        .split_ascii_whitespace()
+        .find(|&arg| arg.contains("earlycon"))?;
+
+    let mut tmp = earlycon.split('=');
+    let _ = tmp.next()?;
+    let values = tmp.next()?;
+
+    let mut values = values.split(',');
+
+    let name = values.next()?;
+
+    if !name.contains("uart") {
+        return None;
+    }
+
+    let param2 = values.next()?;
+    let addr_str;
+    let io_kind = if param2.contains("0x") {
+        addr_str = param2;
+        IoKind::Mmio
+    } else {
+        addr_str = values.next()?;
+        IoKind::from(param2)
+    };
+
+    let mmio = u64::from_str_radix(addr_str, 16).ok()? as usize;
+    let uart = UartData { mmio, io_kind };
+
+    if name.contains("uart8250") || name.contains("16550") {
+        return Some(Ns16550::to_uart(uart));
     }
 
     None
