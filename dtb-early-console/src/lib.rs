@@ -46,7 +46,7 @@ impl Receiver {
     }
 }
 
-pub trait Console {
+pub(crate) trait Console {
     fn put(uart: UartData, c: u8) -> Result<(), Error>;
     fn get(uart: UartData) -> Result<u8, Error>;
 
@@ -192,7 +192,7 @@ fn fdt_bootargs(chosen: &Chosen<'_>) -> Option<(Sender, Receiver)> {
         io_kind,
     };
 
-    if name.contains("uart8250") || name.contains("16550") {
+    if name.contains("8250") || name.contains("16550") {
         return Some(Ns16550::to_uart(uart));
     }
 
