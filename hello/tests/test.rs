@@ -2,7 +2,3 @@
 #![no_main]
 
 extern crate hello;
-
-
-
-

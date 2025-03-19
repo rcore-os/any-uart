@@ -15,7 +15,7 @@ impl Console for AuxMini {
                 return Err(Error::WouldBlock);
             }
             fence(Ordering::Release);
-            let data = uart.reg_u8(0) as *mut u32;
+            let data = uart.reg::<u32>(0);
             data.write_volatile(byte as _);
 
             Ok(())
@@ -24,14 +24,14 @@ impl Console for AuxMini {
 
     fn get(uart: UartData) -> Result<u8, Error> {
         const RX_READY: u32 = 1 << 0;
-        let state = (uart.base + 0x24) as *const u32;
+        let state = uart.reg_u8(0x24) as *const u32;
 
         // Wait until there is data in the FIFO
         unsafe {
             if state.read_volatile() & RX_READY == 0 {
                 return Err(Error::WouldBlock);
             }
-            let data = uart.base as *mut u32;
+            let data = uart.reg::<u32>(0);
 
             Ok(data.read_volatile() as _)
         }

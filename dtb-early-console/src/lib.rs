@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 
 use core::ptr::NonNull;
 
@@ -16,6 +16,7 @@ mod ns16550;
 mod pl011;
 
 pub type Error = embedded_hal_nb::nb::Error<ErrorKind>;
+pub type FnPhysToVirt = fn(usize) -> *mut u8;
 
 pub struct Sender {
     uart: UartData,
@@ -58,22 +59,23 @@ pub(crate) trait Console {
     }
 }
 
-pub fn init(fdt_addr: NonNull<u8>) -> Option<(Sender, Receiver)> {
+pub fn init(fdt_addr: NonNull<u8>, fn_phys_to_virt: FnPhysToVirt) -> Option<(Sender, Receiver)> {
     let fdt = Fdt::from_ptr(fdt_addr).ok()?;
 
     let chosen = fdt.chosen()?;
 
-    if let Some(u) = fdt_stdout(&chosen) {
+    if let Some(u) = fdt_stdout(&chosen, fn_phys_to_virt) {
         return Some(u);
     }
 
-    fdt_bootargs(&chosen)
+    fdt_bootargs(&chosen, fn_phys_to_virt)
 }
 
 #[derive(Clone, Copy)]
 pub(crate) struct UartData {
     pub base: usize,
     pub io_kind: IoKind,
+    pub phys_to_virt: FnPhysToVirt,
 }
 
 impl UartData {
@@ -83,13 +85,13 @@ impl UartData {
 
     pub fn reg<T: Sized>(&self, offset: usize) -> *mut T {
         unsafe {
-            let ptr = self.base as *mut T;
+            let ptr = (self.phys_to_virt)(self.base) as *mut T;
             ptr.add(offset)
         }
     }
 }
 
-fn fdt_stdout(chosen: &Chosen<'_>) -> Option<(Sender, Receiver)> {
+fn fdt_stdout(chosen: &Chosen<'_>, f: FnPhysToVirt) -> Option<(Sender, Receiver)> {
     let stdout = chosen.stdout()?;
     let reg = stdout.node.reg()?.next()?;
     let io_kind = IoKind::Mmio32;
@@ -97,6 +99,7 @@ fn fdt_stdout(chosen: &Chosen<'_>) -> Option<(Sender, Receiver)> {
     let uart = UartData {
         base: mmio,
         io_kind,
+        phys_to_virt: f,
     };
 
     for c in stdout.node.compatibles() {
@@ -157,7 +160,7 @@ impl From<&str> for IoKind {
     }
 }
 
-fn fdt_bootargs(chosen: &Chosen<'_>) -> Option<(Sender, Receiver)> {
+fn fdt_bootargs(chosen: &Chosen<'_>, f: FnPhysToVirt) -> Option<(Sender, Receiver)> {
     let bootargs = chosen.bootargs()?;
 
     let earlycon = bootargs
@@ -186,10 +189,11 @@ fn fdt_bootargs(chosen: &Chosen<'_>) -> Option<(Sender, Receiver)> {
         IoKind::from(param2)
     };
 
-    let mmio = u64::from_str_radix(addr_str, 16).ok()? as usize;
+    let mmio = u64::from_str_radix(addr_str.trim_start_matches("0x"), 16).ok()? as usize;
     let uart = UartData {
         base: mmio,
         io_kind,
+        phys_to_virt: f,
     };
 
     if name.contains("8250") || name.contains("16550") {

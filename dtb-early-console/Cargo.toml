@@ -2,8 +2,14 @@
 name = "dtb-early-console"
 version = "0.1.0"
 edition = "2024"
+authors = ["周睿 <zrufo747@outlook.com>"]
+description = "Init early console from device tree, mostly for Arm"
+keywords = ["pl011", "no-std", "earlycon", "dtb", "arm"]
+license = "MIT"
+categories = ["no-std", "embedded", "hardware-support"]
+repository = "https://github.com/rcore-os/dtb-earyly-console"
+readme = "../README.md"
 
 [dependencies]
 fdt-parser = "0.4"
 embedded-hal-nb = "1.0"
-uart_16550 = "0.3"

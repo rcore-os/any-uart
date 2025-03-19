@@ -8,7 +8,6 @@ use core::{
 };
 
 use aarch64_cpu::{asm::barrier, registers::*};
-use dtb_early_console::*;
 use fdt_parser::Fdt;
 use smccc::{Hvc, Smc, psci};
 
@@ -72,11 +71,15 @@ unsafe extern "C" fn primary_entry() -> ! {
     }
 }
 
+fn phys_to_virt(addr: usize) -> *mut u8 {
+    addr as _
+}
+
 fn rust_entry(_text_va: usize, fdt: *mut u8) -> ! {
     clean_bss();
     enable_fp();
 
-    if let Some((mut tx, _rx)) = dtb_early_console::init(NonNull::new(fdt).unwrap()) {
+    if let Some((mut tx, _rx)) = dtb_early_console::init(NonNull::new(fdt).unwrap(), phys_to_virt) {
         let _ = tx.write_str_blocking("Hello, world!\n");
 
         let _ = tx.write_str_blocking("All tests passed!\n");

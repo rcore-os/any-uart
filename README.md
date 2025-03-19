@@ -1,5 +1,33 @@
 # DTB Early console
 
+A easy way to use early console in ARM.
+
+Get the debug uart address from dtb, and some uart driver are supported.
+
+## supported uart
+
+* 8250 and 16550
+* pl011
+* aux_mini (raspi 4b)
+
+## example
+
+```rust
+use core::ptr::NonNull;
+
+// your dtb address
+let dtb_addr = 0usize as *mut u8
+
+fn phys_to_virt(addr: usize) -> *mut u8 { 
+    // phys addr to virt addr logic
+    addr as *mut u8
+}
+
+if let Some((mut tx, _rx)) = dtb_early_console::init(NonNull::new(dtb_addr).unwrap(), phys_to_virt) {
+    let _ = tx.write_str_blocking("Hello, world!\n");
+}
+```
+
 ## test
 
 ```shell
