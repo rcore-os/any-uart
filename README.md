@@ -1,5 +1,7 @@
 # DTB Early console
 
+[![Check, Build and Test](https://github.com/rcore-os/dtb-earyly-console/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/rcore-os/dtb-earyly-console/actions/workflows/ci.yml)
+
 A easy way to use early console in ARM.
 
 Get the debug uart address from dtb, and some uart driver are supported.
