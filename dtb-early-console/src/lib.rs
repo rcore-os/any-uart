@@ -72,8 +72,21 @@ pub fn init(fdt_addr: NonNull<u8>) -> Option<(Sender, Receiver)> {
 
 #[derive(Clone, Copy)]
 pub(crate) struct UartData {
-    pub mmio: usize,
+    pub base: usize,
     pub io_kind: IoKind,
+}
+
+impl UartData {
+    pub fn reg_u8(&self, offset: usize) -> *mut u8 {
+        self.reg(offset)
+    }
+
+    pub fn reg<T: Sized>(&self, offset: usize) -> *mut T {
+        unsafe {
+            let ptr = self.base as *mut T;
+            ptr.add(offset)
+        }
+    }
 }
 
 fn fdt_stdout(chosen: &Chosen<'_>) -> Option<(Sender, Receiver)> {
@@ -81,7 +94,10 @@ fn fdt_stdout(chosen: &Chosen<'_>) -> Option<(Sender, Receiver)> {
     let reg = stdout.node.reg()?.next()?;
     let io_kind = IoKind::Mmio32;
     let mmio = reg.address as usize;
-    let uart = UartData { mmio, io_kind };
+    let uart = UartData {
+        base: mmio,
+        io_kind,
+    };
 
     for c in stdout.node.compatibles() {
         macro_rules! of_uart {
@@ -111,9 +127,15 @@ pub enum IoKind {
 }
 
 impl IoKind {
-    // pub fn stride(&self)->usize{
-
-    // }
+    pub fn width(&self) -> usize {
+        match self {
+            IoKind::Port => 1,
+            IoKind::Mmio => 4,
+            IoKind::Mmio16 => 2,
+            IoKind::Mmio32 => 4,
+            IoKind::Mmio32be => 4,
+        }
+    }
 }
 
 impl From<&str> for IoKind {
@@ -165,7 +187,10 @@ fn fdt_bootargs(chosen: &Chosen<'_>) -> Option<(Sender, Receiver)> {
     };
 
     let mmio = u64::from_str_radix(addr_str, 16).ok()? as usize;
-    let uart = UartData { mmio, io_kind };
+    let uart = UartData {
+        base: mmio,
+        io_kind,
+    };
 
     if name.contains("uart8250") || name.contains("16550") {
         return Some(Ns16550::to_uart(uart));
