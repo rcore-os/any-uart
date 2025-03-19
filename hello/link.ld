@@ -4,7 +4,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-    . = 0x40200000;
+    . = 0xf000000000000;
     _skernel = .;
 
     .text : ALIGN(4K) {

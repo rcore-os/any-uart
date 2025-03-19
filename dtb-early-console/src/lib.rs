@@ -110,8 +110,8 @@ fn fdt_stdout(chosen: &Chosen<'_>) -> Option<(Sender, Receiver)> {
             };
         }
 
-        of_uart!(AuxMini, &["brcm,bcm2835-aux-uart"]);
-        of_uart!(Pl011, &["arm,pl011", "arm,primecell"]);
+        of_uart!(AuxMini, ["brcm,bcm2835-aux-uart"]);
+        of_uart!(Pl011, ["arm,pl011", "arm,primecell"]);
     }
 
     None

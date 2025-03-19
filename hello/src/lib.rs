@@ -83,22 +83,34 @@ fn rust_entry(_text_va: usize, fdt: *mut u8) -> ! {
     }
 
     shutdown(fdt);
-
     unreachable!()
 }
 
 fn shutdown(fdt: *mut u8) -> Option<()> {
     let fdt = Fdt::from_ptr(NonNull::new(fdt).unwrap()).ok()?;
 
-    let node = fdt
-        .find_compatible(&["arm,psci-1.0", "arm,psci-0.2", "arm,psci"])
-        .next()?;
+    let cp = ["arm,psci-1.0", "arm,psci-0.2", "arm,psci"];
+
+    let mut node = None;
+
+    for one in fdt.all_nodes() {
+        for c in one.compatibles() {
+            for c2 in cp {
+                if c == c2 {
+                    node = Some(one.clone());
+                    break;
+                }
+            }
+        }
+    }
+
+    let node = node?;
 
     let method = node.find_property("method")?.str();
 
-    if method == "smc" {
+    if method.eq("smc") {
         let _ = psci::system_off::<Smc>();
-    } else if method == "hvc" {
+    } else if method.eq("hvc") {
         let _ = psci::system_off::<Hvc>();
     }
 
