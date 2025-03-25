@@ -1,4 +1,4 @@
-# DTB Early console
+# Any Uart
 
 [![Check, Build and Test](https://github.com/rcore-os/dtb-earyly-console/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/rcore-os/dtb-earyly-console/actions/workflows/ci.yml)
 
@@ -25,7 +25,7 @@ fn phys_to_virt(addr: usize) -> *mut u8 {
     addr as *mut u8
 }
 
-if let Some((mut tx, _rx)) = dtb_early_console::init(NonNull::new(dtb_addr).unwrap(), phys_to_virt) {
+if let Some((mut tx, _rx)) = any_uart::init(NonNull::new(dtb_addr).unwrap(), phys_to_virt) {
     let _ = tx.write_str_blocking("Hello, world!\n");
 }
 ```

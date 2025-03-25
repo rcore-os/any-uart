@@ -79,7 +79,7 @@ fn rust_entry(_text_va: usize, fdt: *mut u8) -> ! {
     clean_bss();
     enable_fp();
 
-    if let Some((mut tx, _rx)) = dtb_early_console::init(NonNull::new(fdt).unwrap(), phys_to_virt) {
+    if let Some((mut tx, _rx)) = any_uart::init(NonNull::new(fdt).unwrap(), phys_to_virt) {
         let _ = tx.write_str_blocking("Hello, world!\n");
 
         let _ = tx.write_str_blocking("All tests passed!\n");

@@ -75,17 +75,25 @@ pub fn init(fdt_addr: NonNull<u8>, fn_phys_to_virt: FnPhysToVirt) -> Option<(Sen
 pub(crate) struct UartData {
     pub base: usize,
     pub io_kind: IoKind,
-    pub phys_to_virt: FnPhysToVirt,
 }
 
 impl UartData {
+    fn new(base: u64, io_kind: IoKind, f: FnPhysToVirt) -> Self {
+        let mmio = f(base as _);
+
+        Self {
+            base: mmio as _,
+            io_kind,
+        }
+    }
+
     pub fn reg_u8(&self, offset: usize) -> *mut u8 {
         self.reg(offset)
     }
 
     pub fn reg<T: Sized>(&self, offset: usize) -> *mut T {
         unsafe {
-            let ptr = (self.phys_to_virt)(self.base) as *mut T;
+            let ptr = self.base as *mut T;
             ptr.add(offset)
         }
     }
@@ -95,12 +103,7 @@ fn fdt_stdout(chosen: &Chosen<'_>, f: FnPhysToVirt) -> Option<(Sender, Receiver)
     let stdout = chosen.stdout()?;
     let reg = stdout.node.reg()?.next()?;
     let io_kind = IoKind::Mmio32;
-    let mmio = reg.address as usize;
-    let uart = UartData {
-        base: mmio,
-        io_kind,
-        phys_to_virt: f,
-    };
+    let uart = UartData::new(reg.address, io_kind, f);
 
     for c in stdout.node.compatibles() {
         macro_rules! of_uart {
@@ -189,12 +192,8 @@ fn fdt_bootargs(chosen: &Chosen<'_>, f: FnPhysToVirt) -> Option<(Sender, Receive
         IoKind::from(param2)
     };
 
-    let mmio = u64::from_str_radix(addr_str.trim_start_matches("0x"), 16).ok()? as usize;
-    let uart = UartData {
-        base: mmio,
-        io_kind,
-        phys_to_virt: f,
-    };
+    let mmio = u64::from_str_radix(addr_str.trim_start_matches("0x"), 16).ok()?;
+    let uart = UartData::new(mmio, io_kind, f);
 
     if name.contains("8250") || name.contains("16550") {
         return Some(Ns16550::to_uart(uart));
