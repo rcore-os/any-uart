@@ -34,6 +34,10 @@ impl Sender {
         }
         Ok(())
     }
+
+    pub fn mmio(&self) -> usize {
+        self.uart.base
+    }
 }
 
 pub struct Receiver {
