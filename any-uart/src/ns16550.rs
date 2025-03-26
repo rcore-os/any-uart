@@ -52,17 +52,17 @@ impl Console for Ns16550 {
         Ok(Self::read(uart, 0) as _)
     }
 
-    fn set_irq_enable(_uart: UartData, _enable: bool) {
-        todo!()
+    fn set_irq_enable(uart: UartData, enable: bool) {
+        let val = if enable { 1 | 1 << 1 } else { 0 };
+
+        Self::write(uart, 1, val);
     }
 
-    fn get_irq_enable(_uart: UartData) -> bool {
-        todo!()
+    fn get_irq_enable(uart: UartData) -> bool {
+        Self::read(uart, 1) != 0
     }
 
-    fn clean_irq_event(_uart: UartData, _event: IrqEvent) {
-        todo!()
-    }
+    fn clean_irq_event(_uart: UartData, _event: IrqEvent) {}
 
     fn can_put(uart: UartData) -> bool {
         // Xmitter empty
@@ -76,7 +76,18 @@ impl Console for Ns16550 {
         Self::sts(uart) & LSR_DR != 0
     }
 
-    fn get_irq_event(_uart: UartData) -> IrqEvent {
-        todo!()
+    fn get_irq_event(uart: UartData) -> IrqEvent {
+        let sts = Self::read(uart, 2);
+        let mut event = IrqEvent::default();
+
+        if sts & 1 != 0 {
+            event.rx = true;
+        }
+
+        if sts & 1 << 1 != 0 {
+            event.tx = true;
+        }
+
+        event
     }
 }

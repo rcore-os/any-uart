@@ -20,7 +20,7 @@ impl Console for AuxMini {
     }
 
     fn set_irq_enable(_uart: UartData, _enable: bool) {
-        todo!()
+        
     }
 
     fn get_irq_enable(_uart: UartData) -> bool {
@@ -28,7 +28,7 @@ impl Console for AuxMini {
     }
 
     fn clean_irq_event(_uart: UartData, _event: IrqEvent) {
-        todo!()
+        
     }
 
     fn can_put(uart: UartData) -> bool {
