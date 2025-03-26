@@ -25,7 +25,8 @@ fn phys_to_virt(addr: usize) -> *mut u8 {
     addr as *mut u8
 }
 
-if let Some((mut tx, _rx)) = any_uart::init(NonNull::new(dtb_addr).unwrap(), phys_to_virt) {
+if let Some(mut uart) = any_uart::init(NonNull::new(dtb_addr).unwrap(), phys_to_virt) {
+    let mut tx = uart.tx.take().unwrap();
     let _ = tx.write_str_blocking("Hello, world!\n");
 }
 ```
@@ -37,5 +38,5 @@ cargo install ostool
 # test with qemu
 cargo test -p hello --test test -- --show-output
 # test with uboot
-cargo test -p hello --test test -- --show-output --uboot
+cargo test --release -p hello --test test -- --show-output --uboot
 ```

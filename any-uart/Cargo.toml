@@ -1,15 +1,20 @@
 [package]
 name = "any-uart"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 authors = ["周睿 <zrufo747@outlook.com>"]
 description = "Init early console from device tree, mostly for Arm"
-keywords = ["pl011", "no-std", "earlycon", "dtb", "arm"]
+keywords = ["pl011", "8250", "no-std", "earlycon", "dtb", "arm"]
 license = "MIT"
 categories = ["no-std", "embedded", "hardware-support"]
 repository = "https://github.com/rcore-os/any-uart"
 readme = "../README.md"
 
+[features]
+alloc = []
+
+
 [dependencies]
 fdt-parser = "0.4"
 embedded-hal-nb = "1.0"
+bitflags = "2.8"

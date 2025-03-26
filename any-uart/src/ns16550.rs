@@ -1,6 +1,4 @@
-use core::sync::atomic::{Ordering, fence};
-
-use crate::{Console, Error, IoKind, UartData};
+use crate::{Console, ErrorKind, IoKind, IrqEvent, UartData};
 
 pub struct Ns16550 {}
 
@@ -45,25 +43,40 @@ impl Ns16550 {
 }
 
 impl Console for Ns16550 {
-    fn put(uart: UartData, c: u8) -> Result<(), crate::Error> {
-        // Xmitter empty
-        const LSR_TEMT: u32 = 1 << 6;
-        if Self::sts(uart) & LSR_TEMT == 0 {
-            return Err(Error::WouldBlock);
-        }
-        fence(Ordering::SeqCst);
+    fn put(uart: UartData, c: u8) -> Result<(), ErrorKind> {
         Self::write(uart, 0, c as _);
         Ok(())
     }
 
-    fn get(uart: UartData) -> Result<u8, crate::Error> {
+    fn get(uart: UartData) -> Result<u8, ErrorKind> {
+        Ok(Self::read(uart, 0) as _)
+    }
+
+    fn set_irq_enable(_uart: UartData, _enable: bool) {
+        todo!()
+    }
+
+    fn get_irq_enable(_uart: UartData) -> bool {
+        todo!()
+    }
+
+    fn clean_irq_event(_uart: UartData, _event: IrqEvent) {
+        todo!()
+    }
+
+    fn can_put(uart: UartData) -> bool {
+        // Xmitter empty
+        const LSR_TEMT: u32 = 1 << 6;
+        Self::sts(uart) & LSR_TEMT != 0
+    }
+
+    fn can_get(uart: UartData) -> bool {
         const LSR_DR: u32 = 1;
 
-        if Self::sts(uart) & LSR_DR == 0 {
-            return Err(Error::WouldBlock);
-        }
+        Self::sts(uart) & LSR_DR != 0
+    }
 
-        fence(Ordering::SeqCst);
-        Ok(Self::read(uart, 0) as _)
+    fn get_irq_event(_uart: UartData) -> IrqEvent {
+        todo!()
     }
 }

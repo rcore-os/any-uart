@@ -79,7 +79,8 @@ fn rust_entry(_text_va: usize, fdt: *mut u8) -> ! {
     clean_bss();
     enable_fp();
 
-    if let Some((mut tx, _rx)) = any_uart::init(NonNull::new(fdt).unwrap(), phys_to_virt) {
+    if let Some(mut uart) = any_uart::init(NonNull::new(fdt).unwrap(), phys_to_virt) {
+        let mut tx = uart.tx.take().unwrap();
         let _ = tx.write_str_blocking("Hello, world!\n");
 
         let _ = tx.write_str_blocking("All tests passed!\n");
