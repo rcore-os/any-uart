@@ -19,17 +19,13 @@ impl Console for AuxMini {
         }
     }
 
-    fn set_irq_enable(_uart: UartData, _enable: bool) {
-        
-    }
+    fn set_irq_enable(_uart: UartData, _enable: bool) {}
 
     fn get_irq_enable(_uart: UartData) -> bool {
         todo!()
     }
 
-    fn clean_irq_event(_uart: UartData, _event: IrqEvent) {
-        
-    }
+    fn clean_irq_event(_uart: UartData, _event: IrqEvent) {}
 
     fn can_put(uart: UartData) -> bool {
         const TXFF: u32 = 1 << 5;
