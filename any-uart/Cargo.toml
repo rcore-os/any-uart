@@ -1,6 +1,6 @@
 [package]
 name = "any-uart"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 authors = ["周睿 <zrufo747@outlook.com>"]
 description = "Init early console from device tree, mostly for Arm"
@@ -18,3 +18,4 @@ alloc = []
 fdt-parser = "0.4"
 embedded-hal-nb = "1.0"
 bitflags = "2.8"
+link-boot = "0.2"

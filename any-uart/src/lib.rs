@@ -16,7 +16,8 @@ pub use embedded_hal_nb::nb::block;
 pub use embedded_hal_nb::serial::ErrorKind;
 
 use aux_mini::AuxMini;
-use fdt_parser::{Chosen, Fdt, Node};
+pub use fdt_parser::Node;
+use fdt_parser::{Chosen, Fdt};
 use ns16550::Ns16550;
 use pl011::Pl011;
 
@@ -35,7 +36,7 @@ pub struct Uart {
 }
 
 impl Uart {
-    fn new<C: Console>(data: UartData) -> Self {
+    fn _new<C: Console>(data: UartData) -> Self {
         let op = C::to_op();
 
         Self {
@@ -44,6 +45,33 @@ impl Uart {
             rx: Some(Receiver { uart: data, op }),
             op,
         }
+    }
+
+    pub fn new_by_fdt_node(node: &Node<'_>, f: FnPhysToVirt) -> Option<Self> {
+        let reg = node.reg()?.next()?;
+
+        let io_kind = IoKind::Mmio32;
+
+        // TODO: support io kind detect
+
+        let uart = UartData::new(reg.address, io_kind, f);
+
+        for c in node.compatibles() {
+            macro_rules! of_uart {
+                ($name:ty, $compatible:expr) => {
+                    for want in $compatible {
+                        if c.contains(want) {
+                            return Some(Uart::_new::<$name>(uart));
+                        }
+                    }
+                };
+            }
+
+            of_uart!(AuxMini, ["brcm,bcm2835-aux-uart"]);
+            of_uart!(Pl011, ["arm,pl011", "arm,primecell"]);
+            of_uart!(Ns16550, ["snps,dw-apb-uart"]);
+        }
+        None
     }
 
     pub fn set_irq_enable(&mut self, enable: bool) {
@@ -226,14 +254,14 @@ pub fn init(fdt_addr: NonNull<u8>, fn_phys_to_virt: FnPhysToVirt) -> Option<Uart
     let uart = UartData::new(reg.address, io_kind, fn_phys_to_virt);
 
     if is_8250 {
-        return Some(Uart::new::<Ns16550>(uart));
+        return Some(Uart::_new::<Ns16550>(uart));
     } else {
         for c in node.compatibles() {
             macro_rules! of_uart {
                 ($name:ty, $compatible:expr) => {
                     for want in $compatible {
                         if c.contains(want) {
-                            return Some(Uart::new::<$name>(uart));
+                            return Some(Uart::_new::<$name>(uart));
                         }
                     }
                 };
