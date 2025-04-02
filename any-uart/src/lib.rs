@@ -127,6 +127,10 @@ impl Sender {
         unsafe { self.write_uncheck(word)? };
         Ok(())
     }
+    
+    pub fn mmio_base_add(&mut self, offset: usize) {
+        self.uart.base += offset;
+    }
 
     pub fn can_write(&self) -> bool {
         (self.op.can_put)(self.uart)
