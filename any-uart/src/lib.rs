@@ -47,6 +47,10 @@ impl Uart {
         }
     }
 
+    pub fn mmio_base_add(&mut self, offset: usize) {
+        self.data.base += offset;
+    }
+
     pub fn new_by_fdt_node(node: &Node<'_>, f: FnPhysToVirt) -> Option<Self> {
         let reg = node.reg()?.next()?;
 
