@@ -8,6 +8,7 @@ use core::{
 };
 
 use aarch64_cpu::{asm::barrier, registers::*};
+use any_uart::Uart;
 use fdt_parser::Fdt;
 use smccc::{Hvc, Smc, psci};
 
@@ -82,6 +83,14 @@ fn rust_entry(_text_va: usize, fdt: *mut u8) -> ! {
     if let Some(mut uart) = any_uart::init(NonNull::new(fdt).unwrap(), phys_to_virt) {
         let mut tx = uart.tx.take().unwrap();
         let _ = tx.write_str_blocking("Hello, world!\n");
+
+        let f = Fdt::from_ptr(NonNull::new(fdt).unwrap()).unwrap();
+        let n = f.chosen().unwrap();
+        let node = n.debugcon().unwrap();
+        let mut u = Uart::new_by_fdt_node(&node, phys_to_virt).unwrap();
+        let _ = tx.write_str_blocking("found\n");
+
+        u.tx.take().unwrap().write_str_blocking("Hello, world!\n");
 
         let _ = tx.write_str_blocking("All tests passed!\n");
     }
