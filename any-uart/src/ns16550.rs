@@ -11,7 +11,7 @@ impl Ns16550 {
         unsafe {
             match uart.io_kind {
                 IoKind::Port => {
-                    uart.reg::<u8>(reg).write_volatile(val as _);
+                    uart.reg::<u16>(reg).write_volatile(val as _);
                 }
                 IoKind::Mmio16 => {
                     uart.reg::<u16>(reg).write_volatile(val as _);
@@ -29,7 +29,7 @@ impl Ns16550 {
     fn read(uart: UartData, reg: usize) -> u32 {
         unsafe {
             match uart.io_kind {
-                IoKind::Port => uart.reg::<u8>(reg).read_volatile() as _,
+                IoKind::Port => uart.reg::<u16>(reg).read_volatile() as _,
                 IoKind::Mmio16 => uart.reg::<u16>(reg).read_volatile() as _,
                 IoKind::Mmio32 | IoKind::Mmio => uart.reg::<u32>(reg).read_volatile(),
                 IoKind::Mmio32be => {
