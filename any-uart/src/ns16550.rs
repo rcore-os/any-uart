@@ -35,9 +35,9 @@ impl Ns16550 {
             match uart.io_kind {
                 IoKind::Port => {
                     #[cfg(target_arch = "x86_64")]
-                    x86_64::instructions::port::Port::<u8>::new((uart.base + reg) as _).read() as _
+                    x86_64::instructions::port::Port::<u8>::new((uart.base + reg) as _).read() as u32
                     #[cfg(target_arch = "aarch64")]
-                    {todo!()}
+                    0
                 }
                 IoKind::Mmio16 => uart.reg::<u16>(reg).read_volatile() as _,
                 IoKind::Mmio32 | IoKind::Mmio => uart.reg::<u32>(reg).read_volatile(),
