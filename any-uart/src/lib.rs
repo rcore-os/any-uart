@@ -47,6 +47,11 @@ impl Uart {
         }
     }
 
+    pub fn new_port_8250(base: usize) -> Self {
+        let data = UartData::new(base as _, IoKind::Port, |p| p as _);
+        Self::_new::<Ns16550>(data)
+    }
+
     pub fn mmio_base_add(&mut self, offset: usize) {
         self.data.base += offset;
     }
