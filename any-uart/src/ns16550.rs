@@ -1,3 +1,5 @@
+use cfg_if::cfg_if;
+
 use crate::{Console, ErrorKind, IoKind, IrqEvent, UartData};
 
 pub struct Ns16550 {}
@@ -11,11 +13,13 @@ impl Ns16550 {
         unsafe {
             match uart.io_kind {
                 IoKind::Port => {
-                    #[cfg(target_arch = "x86_64")]
-                    x86_64::instructions::port::Port::<u8>::new((uart.base + reg) as _)
-                        .write(val as _);
-                    #[cfg(target_arch = "aarch64")]
-                    todo!();
+                    cfg_if! {
+                        if #[cfg(target_arch = "x86_64")] {
+                            x86_64::instructions::port::Port::<u8>::new((uart.base + reg) as _)  .write(val as _);
+                        } else {
+                            todo!();
+                        }
+                    }
                 }
                 IoKind::Mmio16 => {
                     uart.reg::<u16>(reg).write_volatile(val as _);
@@ -34,11 +38,14 @@ impl Ns16550 {
         unsafe {
             match uart.io_kind {
                 IoKind::Port => {
-                    #[cfg(target_arch = "x86_64")]
-                    return x86_64::instructions::port::Port::<u8>::new((uart.base + reg) as _)
-                        .read() as u32;
-                    #[cfg(target_arch = "aarch64")]
-                    return 0;
+                    cfg_if! {
+                        if #[cfg(target_arch = "x86_64")] {
+                            x86_64::instructions::port::Port::<u8>::new((uart.base + reg) as _)
+                                .read() as u32
+                        } else {
+                            todo!();
+                        }
+                    }
                 }
                 IoKind::Mmio16 => uart.reg::<u16>(reg).read_volatile() as _,
                 IoKind::Mmio32 | IoKind::Mmio => uart.reg::<u32>(reg).read_volatile(),
