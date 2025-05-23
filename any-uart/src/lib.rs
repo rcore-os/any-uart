@@ -181,6 +181,10 @@ impl Receiver {
         (self.op.can_get)(self.uart)
     }
 
+    pub fn mmio_base_add(&mut self, offset: usize) {
+        self.uart.base += offset;
+    }
+
     /// Read a byte from the UART.
     ///
     /// # Safety
