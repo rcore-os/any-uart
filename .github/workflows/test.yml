@@ -1,24 +1,22 @@
-name: Check, Build and Test
+name: Test
 
 on:
+  workflow_call:
   push:
-    branches:
-      - master
+    branches: dev
   pull_request:
-    branches: 
-      - master
-
-env:
-  CARGO_TERM_COLOR: always
+    branches: dev
 
 jobs:
-  ci:
+  test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
     - name: Install qemu-system
-      run: sudo apt update && sudo apt install qemu-system -y 
+      run: sudo apt update && sudo apt install qemu-system -y
     - name: Install libudev-dev
       run: sudo apt update && sudo apt install libudev-dev -y
     - name: Install toolchain
@@ -28,7 +26,7 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
       with:
-          workspaces: "."
+        workspaces: "."
 
     - name: Install cargo-binutils
       run: cargo install cargo-binutils
@@ -46,5 +44,3 @@ jobs:
 
     - name: Test
       run: cargo test -p hello --test test -- --show-output
-
-   
