@@ -187,7 +187,13 @@ mod tests {
     #[test]
     fn test_io_kind_variants() {
         // Test all IoKind variants exist and are Copy/Clone
-        let kinds = [IoKind::Port, IoKind::Mmio, IoKind::Mmio16, IoKind::Mmio32, IoKind::Mmio32be];
+        let kinds = [
+            IoKind::Port,
+            IoKind::Mmio,
+            IoKind::Mmio16,
+            IoKind::Mmio32,
+            IoKind::Mmio32be,
+        ];
         let _copy = kinds;
         let _clone = IoKind::Mmio.clone();
         let _copy2 = IoKind::Mmio32be;
@@ -207,10 +213,10 @@ mod tests {
     #[test]
     fn test_register_offsets() {
         // Verify register offsets
-        assert_eq!(0, 0);   // THR/RBR
-        assert_eq!(1, 1);   // IER
-        assert_eq!(2, 2);   // IIR/FCR
-        assert_eq!(5, 5);   // LSR
+        assert_eq!(0, 0); // THR/RBR
+        assert_eq!(1, 1); // IER
+        assert_eq!(2, 2); // IIR/FCR
+        assert_eq!(5, 5); // LSR
     }
 
     #[test]

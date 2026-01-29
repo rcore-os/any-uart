@@ -679,7 +679,10 @@ mod tests {
 
     #[test]
     fn test_irq_event_creation() {
-        let event = IrqEvent { rx: true, tx: false };
+        let event = IrqEvent {
+            rx: true,
+            tx: false,
+        };
         assert!(event.rx);
         assert!(!event.tx);
     }
