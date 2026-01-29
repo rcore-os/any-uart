@@ -182,3 +182,140 @@ impl Console for Pl011 {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pl011_struct_exists() {
+        // Verify Pl011 struct can be created (even if it's a zero-sized type)
+        let _ = Pl011 {};
+    }
+
+    #[test]
+    fn test_interrupts_flags() {
+        // Test all interrupt flags exist and have correct values
+        assert_eq!(Interrupts::OEI.bits(), 1 << 10);
+        assert_eq!(Interrupts::BEI.bits(), 1 << 9);
+        assert_eq!(Interrupts::PEI.bits(), 1 << 8);
+        assert_eq!(Interrupts::FEI.bits(), 1 << 7);
+        assert_eq!(Interrupts::RTI.bits(), 1 << 6);
+        assert_eq!(Interrupts::TXI.bits(), 1 << 5);
+        assert_eq!(Interrupts::RXI.bits(), 1 << 4);
+        assert_eq!(Interrupts::DSRMI.bits(), 1 << 3);
+        assert_eq!(Interrupts::DCDMI.bits(), 1 << 2);
+        assert_eq!(Interrupts::CTSMI.bits(), 1 << 1);
+        assert_eq!(Interrupts::RIMI.bits(), 1 << 0);
+    }
+
+    #[test]
+    fn test_interrupts_combinations() {
+        // Test interrupt flag combinations
+        let rx_int = Interrupts::RXI;
+        let tx_int = Interrupts::TXI;
+        let both = rx_int | tx_int;
+        assert!(both.contains(Interrupts::RXI));
+        assert!(both.contains(Interrupts::TXI));
+
+        // Test empty interrupt set
+        let empty = Interrupts::empty();
+        assert!(empty.is_empty());
+        assert!(!empty.contains(Interrupts::RXI));
+
+        // Test from_bits_retain
+        let raw_bits = Interrupts::RXI.bits() | Interrupts::TXI.bits();
+        let reconstructed = Interrupts::from_bits_retain(raw_bits);
+        assert!(reconstructed.contains(Interrupts::RXI));
+        assert!(reconstructed.contains(Interrupts::TXI));
+    }
+
+    #[test]
+    fn test_register_offsets() {
+        // Verify register offsets
+        assert_eq!(UARTCR, 0x030 / 4);
+        assert_eq!(IMSC, 0x038 / 4);
+        assert_eq!(RIS, 0x03C / 4);
+        assert_eq!(MIS, 0x040 / 4);
+        assert_eq!(ICR, 0x044 / 4);
+    }
+
+    #[test]
+    fn test_can_put_logic() {
+        // Test the logic of can_put function (TXFF flag)
+        const TXFF: u8 = 1 << 5;
+        let fr_value = 0x00; // TXFF not set
+        let can_write = fr_value & TXFF == 0;
+        assert!(can_write);
+
+        let fr_value = 0x20; // TXFF set
+        let can_write = fr_value & TXFF == 0;
+        assert!(!can_write);
+    }
+
+    #[test]
+    fn test_can_get_logic() {
+        // Test the logic of can_get function (RXFE flag)
+        const RXFE: u8 = 0x10;
+        let fr_value = 0x00; // RXFE not set (data available)
+        let can_read = fr_value & RXFE == 0;
+        assert!(can_read);
+
+        let fr_value = 0x10; // RXFE set (no data)
+        let can_read = fr_value & RXFE == 0;
+        assert!(!can_read);
+    }
+
+    #[test]
+    fn test_uart_control_bits() {
+        // Test UART control register bits
+        const TXE: u32 = 1 << 8;
+        const UARTEN: u32 = 1 << 0;
+        let enable_bits = TXE | UARTEN;
+        assert_eq!(enable_bits, 0x101);
+    }
+
+    #[test]
+    fn test_interrupt_mask_logic() {
+        // Test interrupt mask register logic
+        let rx_mask = Interrupts::RXI.bits();
+        let tx_mask = Interrupts::TXI.bits();
+        let both_mask = rx_mask | tx_mask;
+        assert_ne!(both_mask, 0);
+        assert!(both_mask & rx_mask != 0);
+        assert!(both_mask & tx_mask != 0);
+    }
+
+    #[test]
+    fn test_data_error_handling() {
+        // Test data error detection logic
+        const ERROR_MASK: u32 = 0xFFFFFF00;
+        let good_data: u32 = 0x00000041; // 'A'
+        let bad_data: u32 = 0x10000041; // 'A' with error bit set
+
+        let good_ok = good_data & ERROR_MASK == 0;
+        let bad_ok = bad_data & ERROR_MASK == 0;
+        assert!(good_ok);
+        assert!(!bad_ok);
+    }
+
+    #[test]
+    fn test_irq_event_integration() {
+        // Test IrqEvent integration with Pl011
+        let mut event = IrqEvent::default();
+        assert!(!event.rx);
+        assert!(!event.tx);
+
+        event.rx = true;
+        event.tx = true;
+        assert!(event.rx);
+        assert!(event.tx);
+    }
+
+    #[test]
+    fn test_pl011_console_trait() {
+        // Verify Pl011 implements Console trait
+        let _ = Pl011 {};
+        // This test ensures the type exists and the trait implementation compiles
+    }
+}

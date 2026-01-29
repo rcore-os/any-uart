@@ -229,7 +229,7 @@ impl Uart {
 ///
 /// - `rx` - Receive interrupt flag, indicating data is available for reading
 /// - `tx` - Transmit interrupt flag, indicating transmit buffer is available
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct IrqEvent {
     pub rx: bool,
     pub tx: bool,
@@ -537,7 +537,7 @@ pub fn init(fdt_addr: NonNull<u8>, fn_phys_to_virt: FnPhysToVirt) -> Option<Uart
 /// - `Mmio16` - 16-bit memory mapped I/O
 /// - `Mmio32` - 32-bit little-endian memory mapped I/O
 /// - `Mmio32be` - 32-bit big-endian memory mapped I/O
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum IoKind {
     Port,
     Mmio,
@@ -648,5 +648,47 @@ mod tests {
         let fdt = include_bytes!("../../dtb/rk3568-firefly-roc-pc-se.dtb");
         let fdt_addr = NonNull::new(fdt.as_ptr() as usize as _).unwrap();
         let _ = init(fdt_addr, |r| r as _).unwrap();
+    }
+
+    #[test]
+    fn test_io_kind_width() {
+        assert_eq!(IoKind::Port.width(), 1);
+        assert_eq!(IoKind::Mmio.width(), 4);
+        assert_eq!(IoKind::Mmio16.width(), 2);
+        assert_eq!(IoKind::Mmio32.width(), 4);
+        assert_eq!(IoKind::Mmio32be.width(), 4);
+    }
+
+    #[test]
+    fn test_io_kind_from_str() {
+        assert_eq!(IoKind::from("mmio"), IoKind::Mmio);
+        assert_eq!(IoKind::from("mmio16"), IoKind::Mmio16);
+        assert_eq!(IoKind::from("mmio32"), IoKind::Mmio32);
+        assert_eq!(IoKind::from("mmio32be"), IoKind::Mmio32be);
+        assert_eq!(IoKind::from("mmio32native"), IoKind::Mmio32); // Assuming little-endian
+        assert_eq!(IoKind::from("invalid"), IoKind::Port);
+        assert_eq!(IoKind::from("port"), IoKind::Port);
+    }
+
+    #[test]
+    fn test_irq_event_default() {
+        let event = IrqEvent::default();
+        assert!(!event.rx);
+        assert!(!event.tx);
+    }
+
+    #[test]
+    fn test_irq_event_creation() {
+        let event = IrqEvent { rx: true, tx: false };
+        assert!(event.rx);
+        assert!(!event.tx);
+    }
+
+    #[test]
+    fn test_irq_event_copy() {
+        let event1 = IrqEvent { rx: true, tx: true };
+        let event2 = event1;
+        assert_eq!(event1.rx, event2.rx);
+        assert_eq!(event1.tx, event2.tx);
     }
 }

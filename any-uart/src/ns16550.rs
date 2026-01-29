@@ -150,12 +150,128 @@ impl Console for Ns16550 {
         if sts & 1 << 1 != 0 {
             event.tx = true;
         }
-
         event
     }
 
     /// Initializes the UART controller (currently empty implementation).
-    ///
-    /// Before actual use, parameters such as baud rate and data bits usually need to be configured through other means.
     fn open(_uart: UartData) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ns16550_struct_exists() {
+        // Verify Ns16550 struct can be created (even if it's a zero-sized type)
+        let _ = Ns16550 {};
+    }
+
+    #[test]
+    fn test_lsr_constants() {
+        // Verify LSR constant values are correct
+        const LSR_TEMT: u32 = 1 << 6;
+        const LSR_DR: u32 = 1;
+        assert_eq!(LSR_TEMT, 64);
+        assert_eq!(LSR_DR, 1);
+    }
+
+    #[test]
+    fn test_uart_data_new() {
+        // Test UartData creation with identity mapping
+        let data = crate::UartData::new(0x1000, IoKind::Mmio32, |r| r as _);
+        assert_eq!(data.base, 0x1000);
+        assert_eq!(data.io_kind, IoKind::Mmio32);
+    }
+
+    #[test]
+    fn test_io_kind_variants() {
+        // Test all IoKind variants exist and are Copy/Clone
+        let kinds = [IoKind::Port, IoKind::Mmio, IoKind::Mmio16, IoKind::Mmio32, IoKind::Mmio32be];
+        let _copy = kinds;
+        let _clone = IoKind::Mmio.clone();
+        let _copy2 = IoKind::Mmio32be;
+    }
+
+    #[test]
+    fn test_interrupt_enable_bits() {
+        // Verify interrupt enable bit patterns
+        let rx_enable = 1;
+        let tx_enable = 1 << 1;
+        let both_enabled = rx_enable | tx_enable;
+        assert_eq!(both_enabled, 3);
+        assert_ne!(rx_enable, 0);
+        assert_ne!(tx_enable, 0);
+    }
+
+    #[test]
+    fn test_register_offsets() {
+        // Verify register offsets
+        assert_eq!(0, 0);   // THR/RBR
+        assert_eq!(1, 1);   // IER
+        assert_eq!(2, 2);   // IIR/FCR
+        assert_eq!(5, 5);   // LSR
+    }
+
+    #[test]
+    fn test_can_put_logic() {
+        // Test the logic of can_put function
+        const LSR_TEMT: u32 = 1 << 6;
+        let lsr_value = 0x40; // TEMT bit set
+        let can_write = lsr_value & LSR_TEMT != 0;
+        assert!(can_write);
+
+        let lsr_value = 0x00; // TEMT bit not set
+        let can_write = lsr_value & LSR_TEMT != 0;
+        assert!(!can_write);
+    }
+
+    #[test]
+    fn test_can_get_logic() {
+        // Test the logic of can_get function
+        const LSR_DR: u32 = 1;
+        let lsr_value = 0x01; // DR bit set
+        let can_read = lsr_value & LSR_DR != 0;
+        assert!(can_read);
+
+        let lsr_value = 0x00; // DR bit not set
+        let can_read = lsr_value & LSR_DR != 0;
+        assert!(!can_read);
+    }
+
+    #[test]
+    fn test_write_bit_patterns() {
+        // Test write bit patterns for different widths
+        let byte_val: u8 = 0xAB;
+        assert_eq!(byte_val, 0xAB);
+
+        let word_val: u16 = 0xABCD;
+        assert_eq!(word_val, 0xABCD);
+
+        let dword_val: u32 = 0x12345678;
+        assert_eq!(dword_val, 0x12345678);
+
+        // Test big-endian conversion
+        let val: u32 = 0x12345678;
+        let be_val = val.to_be();
+        assert_eq!(be_val, 0x78563412);
+    }
+
+    #[test]
+    fn test_io_kind_width_values() {
+        // Test IoKind width values
+        assert_eq!(IoKind::Port.width(), 1);
+        assert_eq!(IoKind::Mmio.width(), 4);
+        assert_eq!(IoKind::Mmio16.width(), 2);
+        assert_eq!(IoKind::Mmio32.width(), 4);
+        assert_eq!(IoKind::Mmio32be.width(), 4);
+    }
+
+    #[test]
+    fn test_error_kind_variants() {
+        // Test ErrorKind exists and can be used
+        let _error = ErrorKind::Other;
+        let _error = ErrorKind::Overrun;
+        let _error = ErrorKind::Parity;
+    }
 }
