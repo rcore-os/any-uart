@@ -109,8 +109,6 @@ impl Uart {
     /// # Arguments
     ///
     /// * `base` - Port base address, e.g., 0x3f8 (COM1), 0x2f8 (COM2), etc.
-    ///
-
     pub fn new_port_8250(base: usize) -> Self {
         let data = UartData::new(base as _, IoKind::Port, |p| p as _);
         Self::_new::<Ns16550>(data)
@@ -183,8 +181,6 @@ impl Uart {
     /// # Arguments
     ///
     /// * `enable` - `true` to enable interrupts, `false` to disable interrupts
-    ///
-
     pub fn set_irq_enable(&mut self, enable: bool) {
         (self.op.set_irq_enable)(self.data, enable);
     }
@@ -214,8 +210,6 @@ impl Uart {
     /// # Returns
     ///
     /// Returns an `IrqEvent` structure containing pending receive and transmit interrupt flags.
-    ///
-
     pub fn get_irq_event(&mut self) -> IrqEvent {
         (self.op.get_irq_event)(self.data)
     }
@@ -250,8 +244,6 @@ struct UartOp {
 /// UART transmitter.
 ///
 /// Provides non-blocking serial data transmission functionality.
-///
-
 pub struct Sender {
     uart: UartData,
     op: UartOp,
@@ -268,8 +260,7 @@ impl Sender {
     ///
     /// # Returns
     ///
-    /// Returns `Ok(())` on successful write, `Err(Error)` on failure.    ///
-
+    /// Returns `Ok(())` on successful write, `Err(Error)` on failure.
     pub fn write(&mut self, word: u8) -> Result<(), Error> {
         if !self.can_write() {
             return Err(Error::WouldBlock);
@@ -293,8 +284,6 @@ impl Sender {
     /// # Returns
     ///
     /// Returns `true` if transmit buffer is available, otherwise `false`.
-    ///
-
     pub fn can_write(&self) -> bool {
         (self.op.can_put)(self.uart)
     }
@@ -327,8 +316,6 @@ impl Sender {
     /// # Returns
     ///
     /// Returns `Ok(())` on successful write.
-    ///
-
     pub fn write_str_blocking(&mut self, s: &str) -> core::fmt::Result {
         for c in s.bytes() {
             let _ = block!(self.write(c));
@@ -349,8 +336,6 @@ impl Sender {
 /// UART receiver.
 ///
 /// Provides non-blocking serial data reception functionality.
-///
-
 pub struct Receiver {
     uart: UartData,
     op: UartOp,
@@ -364,8 +349,6 @@ impl Receiver {
     /// # Returns
     ///
     /// Returns `Ok(byte)` on success, `Err(Error)` on failure.
-    ///
-
     pub fn read(&mut self) -> Result<u8, Error> {
         if !self.can_read() {
             return Err(Error::WouldBlock);
@@ -380,8 +363,6 @@ impl Receiver {
     /// # Returns
     ///
     /// Returns `true` if data is available to read, `false` otherwise.
-    ///
-
     pub fn can_read(&self) -> bool {
         (self.op.can_get)(self.uart)
     }
@@ -552,8 +533,6 @@ impl IoKind {
     /// # Returns
     ///
     /// Returns the byte width of this I/O type.
-    ///
-
     pub fn width(&self) -> usize {
         match self {
             IoKind::Port => 1,
@@ -575,8 +554,6 @@ impl From<&str> for IoKind {
     /// - "mmio32be" -> `IoKind::Mmio32be`
     /// - "mmio32native" -> Automatically selected based on target platform endianness
     /// - Other values -> `IoKind::Port`
-    ///
-
     fn from(value: &str) -> Self {
         match value {
             "mmio" => IoKind::Mmio,
